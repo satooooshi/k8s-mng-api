@@ -5,7 +5,13 @@ const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 
 import request = require('request');
 
+import jp = require('jsonpath');
 
+
+
+export enum HealthStatus {
+  'OK',
+}
 
 export class ServiceResourceApi {
 
@@ -35,6 +41,31 @@ export class ServiceResourceApi {
 
   }
 
+  public serviceDiscovery(serviceIdList?: string[]){
+    console.log('serviceDiscovery')
+    var cities = [
+      { name: "London", "population": 8615246 },
+      { name: "Berlin", "population": 3517424 },
+      { name: "Madrid", "population": 3165235 },
+      { name: "Rome",   "population": 2870528 }
+    ];
+    //console.log(jp.query(cities, '$.items'))
+    const opts = {} as request.Options;
+    kc.applyToRequest(opts);
+    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services`, opts,
+        (error, response, body) => {
+            if (error) {
+                console.log(`error: ${error}`);
+            }
+            if (response) {
+                console.log(`statusCode: ${response.statusCode}`);
+            }
+            console.log(jp.query(JSON.parse(body), '$.items'));
+            //console.log(`body: ${JSON.stringify(body, ["items", "metadata", "name"], 2)}`);
+      });
+
+  }
+
   public example(){
     console.log('example')
     const opts = {} as request.Options;
@@ -48,7 +79,7 @@ export class ServiceResourceApi {
             if (response) {
                 console.log(`statusCode: ${response.statusCode}`);
             }
-            console.log(`body: ${body}`);
+            console.log(`body: ${JSON.stringify(body, null, 2)}`);
       });
 
   }

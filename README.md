@@ -1,8 +1,18 @@
 npm i  
 npm start  
 
+compile ts files 
+npx tsc --init
+--> tscofig.json is generated
+npx tsc
+node app.js
+
+compile a single ts file
 npx tsc app.ts  
 --> app.js is generated  
+
+typescript compile
+  // "strict": true,  
 
 知識ゼロから始めるTypeScript 〜クラス編〜
 https://qiita.com/yukiji/items/3db06601ece7f080b0d0
@@ -40,3 +50,12 @@ curl -s -k https://34.146.130.74:8443/api --header "Authorization: Bearer eyJhbG
 
 
 curl -s -k http://34.146.130.74:8001/api --header "Authorization: Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6ImVTeVZURUl3dmw5U2VmWGJjRkZKWVBORmgwWnpLR0YyRUljVkJsRGZ1eFEifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImRlZmF1bHQtdG9rZW4tczQ0d2siLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZGVmYXVsdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjVjZjQ5ZjgxLWRiNzktNGQ1ZC04ZmE0LWNlOTk4YzI2ZWUzNSIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmRlZmF1bHQifQ.NMT1FCvBMRCvNMd_RweZlyzZi55NG1B2_Eh2CvCIxfFoR5hjbvAoep644qs9jinstF0rn5nwehX6hyOfE1jqW9Kc357L7-ATyE-xzhv4Sx6dHqmbHeZ-wH0mE4NoGsycU2fZxtIsK2MrHjY0-b6XzIcc7uY15BSsDCpP0zfaiEFJ8g4PdPZ8MvQ3VlW7MqdvRLgSniD6r-zvUFUFLXNCDRXAsFv_xEJB6I-gyCuBWfVltFQNoLQaibHzJpbh0aboCiJTTDY0Xw0StU5aW0llAB-5bKQTN1KpiXg5jTJ5ZAxlQihOxOhkr3bdN8cQGIvg9YGjmubXyjgS2rhty47OLQ"
+
+
+jsonpath
+https://www.npmjs.com/package/jsonpath
+https://kubernetes.io/ja/docs/reference/kubectl/jsonpath/
+https://qiita.com/takkii1010/items/0ce1c834d3a73496ccef
+
+kubectl get service -o json -o=jsonpath="{range .items[*]}{.metadata.name}{'\t'}{.status.startTime}{'\n'}{end}"
+kubectl get pods -o=jsonpath="{range .items[*]}{.metadata.name}{\"\t\"}{.status.startTime}{\"\n\"}{end}"

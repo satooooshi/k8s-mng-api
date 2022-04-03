@@ -1,17 +1,22 @@
 "use strict";
-exports.__esModule = true;
-exports.ServiceResourceApi = void 0;
-var k8s = require("@kubernetes/client-node");
-var kc = new k8s.KubeConfig();
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.ServiceResourceApi = exports.HealthStatus = void 0;
+const k8s = require("@kubernetes/client-node");
+const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
-var k8sApi = kc.makeApiClient(k8s.CoreV1Api);
-var request = require("request");
-var ServiceResourceApi = /** @class */ (function () {
-    function ServiceResourceApi(basePath) {
+const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+const request = require("request");
+const jp = require("jsonpath");
+var HealthStatus;
+(function (HealthStatus) {
+    HealthStatus[HealthStatus["OK"] = 0] = "OK";
+})(HealthStatus = exports.HealthStatus || (exports.HealthStatus = {}));
+class ServiceResourceApi {
+    constructor(basePath) {
         this.basePath = basePath;
-        console.log("basePath is set to ".concat(this.basePath));
+        console.log(`basePath is set to ${this.basePath}`);
     }
-    ServiceResourceApi.prototype.serviceDeploymentRunning = function (serviceName, configFileName) {
+    serviceDeploymentRunning(serviceName, configFileName) {
         console.log('serviceDeploymentRunning');
         request.get('http://httpbin.org/get', function (err, res, body) {
             if (err) {
@@ -20,29 +25,50 @@ var ServiceResourceApi = /** @class */ (function () {
             }
             console.log(body);
         });
-    };
-    ServiceResourceApi.prototype.serviceRegister = function (serviceID, ip, port) {
+    }
+    serviceRegister(serviceID, ip, port) {
         console.log('serviceRegister');
         k8sApi.listNamespacedPod('default')
-            .then(function (res) {
+            .then((res) => {
             // tslint:disable-next-line:no-console
             console.log(JSON.stringify(res.body, null, 2));
         });
-    };
-    ServiceResourceApi.prototype.example = function () {
-        console.log('example');
-        var opts = {};
+    }
+    serviceDiscovery(serviceIdList) {
+        console.log('serviceDiscovery');
+        var cities = [
+            { name: "London", "population": 8615246 },
+            { name: "Berlin", "population": 3517424 },
+            { name: "Madrid", "population": 3165235 },
+            { name: "Rome", "population": 2870528 }
+        ];
+        //console.log(jp.query(cities, '$.items'))
+        const opts = {};
         kc.applyToRequest(opts);
-        request.get("".concat(kc.getCurrentCluster().server, "/api/v1/namespaces/default/pods"), opts, function (error, response, body) {
+        request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services`, opts, (error, response, body) => {
             if (error) {
-                console.log("error: ".concat(error));
+                console.log(`error: ${error}`);
             }
             if (response) {
-                console.log("statusCode: ".concat(response.statusCode));
+                console.log(`statusCode: ${response.statusCode}`);
             }
-            console.log("body: ".concat(body));
+            console.log(jp.query(JSON.parse(body), '$.items'));
+            //console.log(`body: ${JSON.stringify(body, ["items", "metadata", "name"], 2)}`);
         });
-    };
-    return ServiceResourceApi;
-}());
+    }
+    example() {
+        console.log('example');
+        const opts = {};
+        kc.applyToRequest(opts);
+        request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/pods`, opts, (error, response, body) => {
+            if (error) {
+                console.log(`error: ${error}`);
+            }
+            if (response) {
+                console.log(`statusCode: ${response.statusCode}`);
+            }
+            console.log(`body: ${JSON.stringify(body, null, 2)}`);
+        });
+    }
+}
 exports.ServiceResourceApi = ServiceResourceApi;
