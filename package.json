@@ -11,7 +11,9 @@
   "license": "ISC",
   "dependencies": {
     "@kubernetes/client-node": "^0.15.1",
+    "cors": "^2.8.5",
     "express": "^4.17.3",
-    "cors": "^2.8.5"
+    "request": "^2.88.2",
+    "typescript": "^4.6.3"
   }
 }
