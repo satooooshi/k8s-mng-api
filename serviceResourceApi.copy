@@ -4,10 +4,8 @@ kc.loadFromDefault();
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
 
 import request = require('request');
-import fetch from 'node-fetch';
 
 import jp = require('jsonpath');
-
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-service-apis-strong-
 
@@ -17,9 +15,10 @@ export enum HealthStatus {
 
 export class ServiceResourceApi {
 
-  constructor(
-    private basePath?: string
-  ){}
+  constructor(protected basePath: string) {
+    console.log(`basePath is set to ${this.basePath}`)
+  }
+
 
   // deployment 
   public serviceDeploymentRunning(serviceName?: string, configFileName?: string){
@@ -95,12 +94,11 @@ export class ServiceResourceApi {
   }
 
   // kubectl get ep
-   public async serviceDiscovery(serviceIdList?: string[]){
+   public serviceDiscovery(serviceIdList?: string[]){
     console.log('serviceDiscovery')
     //console.log(jp.query(cities, '$.items'))
     const opts = {} as request.Options;
     kc.applyToRequest(opts);
-  
     //request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services/histories?pretty=true`, opts,
     request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/endpoints/histories`, opts,
         (error, response, body) => {
@@ -113,49 +111,15 @@ export class ServiceResourceApi {
             //console.log(jp.query(JSON.parse(body), '$..clusterIP'))
             let item=JSON.parse(body)
             //console.log(JSON.stringify(item, null, 2))
-            //console.log(jp.query(JSON.parse(body), '$.kind'))
             let addresses=item.subsets[0].addresses.map(addr=>{
               return {ip:addr.ip, uid:addr.targetRef.uid}
             })
             let ports=item.subsets[0].ports
             console.log(JSON.stringify(addresses, null, 2))
             console.log(JSON.stringify(ports, null, 2))
-
-            //return 'heya'
+           
       });
-  }
 
-
-  // kubectl get ep
-  public async serviceDiscoveryTest(serviceIdList?: string[]){
-    console.log('serviceDiscovery')
-    //console.log(jp.query(cities, '$.items'))
-    const opts = {} as request.Options;
-    kc.applyToRequest(opts);
-  
-    //request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services/histories?pretty=true`, opts,
-    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/endpoints/histories`, opts,
-        (error, response, body) => {
-            if (error) {
-                console.log(`error: ${error}`);
-            }
-            if (response) {
-                console.log(`statusCode: ${response.statusCode}`);
-            }
-            //console.log(jp.query(JSON.parse(body), '$..clusterIP'))
-            let item=JSON.parse(body)
-            //console.log(JSON.stringify(item, null, 2))
-            
-            let addresses=item.subsets[0].addresses.map(addr=>{
-              return {ip:addr.ip, uid:addr.targetRef.uid}
-            })
-            let ports=item.subsets[0].ports
-            //console.log(JSON.stringify(addresses, null, 2))
-            //console.log(JSON.stringify(ports, null, 2))
-            console.log(jp.query(JSON.parse(body),'$.subsets[*].addresses[*].ip'))
-            console.log(jp.query(JSON.parse(body),'$.subsets[*].ports[*].port'))
-            //return 'heya'
-      });
   }
 
   // https://cstoku.dev/posts/2018/k8sdojo-10/

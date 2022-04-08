@@ -4,8 +4,7 @@ npm start
 compile ts files 
 npx tsc --init
 --> tscofig.json is generated
-npx tsc
-node app.js
+npx tsc && node app.js
 
 compile a single ts file
 npx tsc app.ts  

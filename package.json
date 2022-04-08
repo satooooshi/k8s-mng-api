@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -14,7 +13,12 @@
     "cors": "^2.8.5",
     "express": "^4.17.3",
     "jsonpath": "^1.1.1",
+    "node-fetch": "^2.6.5",
     "request": "^2.88.2",
     "typescript": "^4.6.3"
+  },
+  "devDependencies": {
+    "swagger-jsdoc": "^6.2.0",
+    "swagger-ui-express": "^4.3.0"
   }
 }
