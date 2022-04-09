@@ -55,44 +55,14 @@ app.get('/api/svc/listAllpods', function (req, res) {
     k8sApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, 'app=histories').then((response) => {
         // tslint:disable-next-line:no-console
         console.log(response.body.items);
+        res.json({ 'msg': 'Got a POST request' });
     });
-});
-app.get('/api/svc/listServices', function (req, res) {
-    const svcname = req.params.svcname;
-    //let myapi = new ServiceResourceApi()//'34.146.130.74'
-    //return res.send(myapi.serviceDiscovery())
-    console.log('listService');
-    //console.log(jp.query(cities, '$.items'))
-    const opts = {};
-    kc.applyToRequest(opts);
-    //request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services/histories?pretty=true`, opts,
-    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services?pretty=true`, opts, (error, response, body) => {
-        if (error) {
-            console.log(`error: ${error}`);
-        }
-        if (response) {
-            console.log(`statusCode: ${response.statusCode}`);
-            let buf = JSON.parse(body).items.map(item => {
-                return { name: item.metadata.name, uid: item.metadata.uid, clusterIP: item.spec.clusterIP, ports: item.spec.ports };
-            });
-            console.log(JSON.stringify(buf, null, 2));
-            return res.send(buf);
-        }
-    });
-});
-// curl -X POST -H "Content-Type: application/json" -d '{"name":"太郎", "age":"30"}' http://34.146.130.74:3010/api/service/test/service/test
-// curl -X POST -F file=@person.js http://34.146.130.74:3010/api/service/test
-app.post('/api/service/test', function (req, res) {
-    console.log(req);
-    //res.send('Got a POST request')
-    // res.jsonメソッドは、ヘッダーにContent-Typeにapplication/jsonを追加、オブジェクトをJSON.stringify()して返してくれます。
-    res.json({ 'msg': 'Got a POST request' });
 });
 // curl -X POST -H "Content-Type: application/json" -d '{"name":"太郎", "age":"30"}' http://34.146.130.74:3010/api/service/test/service/test
 // curl -X POST -F file=@liveness-check.yml http://34.146.130.74:3010/api/svc/serviceDeploymentRunning
 app.post('/api/svc/serviceDeploymentRunning', upload.single('file'), function (req, res) {
     console.log('serviceDeploymentRunning');
-    console.log('label is needed for service discovery');
+    console.log('label:app: is needed for service discovery');
     console.log(req.file.filename);
     (0, apply_1.apply)(`uploads/${req.file.filename}`);
     //res.send('Got a POST request')
@@ -142,6 +112,7 @@ app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
     const opts = {};
     kc.applyToRequest(opts);
     request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/endpoints/${svcname}`, opts, (error, response, body) => {
+        var _a, _b;
         if (error) {
             console.log(`error: ${error}`);
         }
@@ -150,10 +121,10 @@ app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
             //console.log(jp.query(JSON.parse(body), '$..clusterIP'))
             let item = JSON.parse(body);
             console.log(item);
-            let addresses = item.subsets[0].addresses.map(addr => {
+            let addresses = (_a = item.subsets) === null || _a === void 0 ? void 0 : _a[0].addresses.map(addr => {
                 return addr.ip; //{ip:addr.ip, uid:addr.targetRef.uid}
             });
-            let ports = item.subsets[0].ports;
+            let ports = (_b = item.subsets) === null || _b === void 0 ? void 0 : _b[0].ports;
             console.log(addresses);
             //k8sApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
             k8sApi.listNamespacedPod('default').then((response) => {
@@ -203,76 +174,6 @@ app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
 app.get('/api/svc/healthCheck/:svcname', function (req, res) {
     const svcname = req.params.svcname;
     console.log('healthCheck');
-    const opts = {};
-    kc.applyToRequest(opts);
-    let name = 'histories-664b4d6b8d-cvxc7';
-    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/pods/${name}/status`, opts, (error, response, body) => {
-        if (error) {
-            console.log(`error: ${error}`);
-        }
-        if (response) {
-            console.log(`statusCode: ${response.statusCode}`);
-            //console.log(jp.query(JSON.parse(body), '$..clusterIP'))
-            console.log(JSON.parse(body));
-        }
-    });
-});
-/**
- * @swagger
- * /api/svc/serviceCancel/{svcname}:
- *   get:
- *     tags:
- *      - "Service Resource Management API"
- *     summary: get service's endpoints ip and port
- *     description: get service's endpoints ip and port
- *     parameters:
- *       - $ref: '#/parameters/svcname'
- *     responses:
- *       200:
- *         description: Success, svsname's endpoints ip and port is returned
- */
-app.get('/api/svc/serviceCanceltest/:svcname', function (req, res) {
-    const svcname = req.params.svcname;
-    console.log('delete endpoint but redeployed by kbernetes automatically');
-    //console.log(jp.query(cities, '$.items'))
-    const opts = {};
-    kc.applyToRequest(opts);
-    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/endpoints/${svcname}`, opts, (error, response, body) => {
-        if (error) {
-            console.log(`error: ${error}`);
-        }
-        if (response) {
-            console.log(`statusCode: ${response.statusCode}`);
-            //console.log(jp.query(JSON.parse(body), '$..clusterIP'))
-            let item = JSON.parse(body);
-            console.log(item);
-            let addresses = item.subsets[0].addresses.map(addr => {
-                return addr.ip; //{ip:addr.ip, uid:addr.targetRef.uid}
-            });
-            let ports = item.subsets[0].ports;
-            console.log(addresses);
-            //k8sApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
-            k8sApi.listNamespacedPod('default').then((response) => {
-                // tslint:disable-next-line:no-console
-                let deletingPods = response.body.items.filter(pod => {
-                    for (let i = 0; i < addresses.length; i++) {
-                        if (addresses[i] == pod.status.podIP) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }).map(pod => {
-                    return pod.metadata.name;
-                });
-                console.log(deletingPods);
-                deletingPods.forEach(podName => {
-                    //deletePod(pod,'defalut')
-                    k8sApi.deleteNamespacedPod(podName, 'default');
-                });
-                return res.send(deletingPods);
-            });
-        }
-    });
 });
 // Kubernetes scheduling is simply the process of assigning pods to the matched nodes in a cluster.
 // https://thenewstack.io/a-deep-dive-into-kubernetes-scheduling/
@@ -284,55 +185,27 @@ app.get('/api/svc/serviceCanceltest/:svcname', function (req, res) {
 app.get('/api/svc/serviceScheduleOnNodes/:svcname', function (req, res) {
     const svcname = req.params.svcname;
     console.log('service schedule');
-    // read service statrus
-    // read deployment with selectror
-    // delete service and deplohment with selector
-    //console.log(jp.query(cities, '$.items'))
-    const opts = {};
-    kc.applyToRequest(opts);
-    request.delete(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services/${svcname}`, opts, (error, response, body) => {
-        if (error) {
-            console.log(`error: ${error}`);
-        }
-        if (response) {
-            console.log(`statusCode: ${response.statusCode}`);
-            console.log(body);
-        }
-    });
 });
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#-strong-write-operations-service-v1-core-strong-
 app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const svcname = req.params.svcname;
         console.log('service cancel');
-        console.log('read service info to determine selector to delete with deploymeht');
-        const test = (svcname, namespace) => __awaiter(this, void 0, void 0, function* () {
+        console.log('read service info and delete selectored service and corresponding deployments');
+        const doit = (svcname, namespace) => __awaiter(this, void 0, void 0, function* () {
             const svcdata = yield k8sApi.readNamespacedService(svcname, namespace);
             console.log(svcdata.body.spec.selector.app);
+            const delSvc = yield k8sApi.deleteNamespacedService(svcname, namespace);
+            console.log(delSvc);
             const depList = yield k8sAppsV1Api.listNamespacedDeployment(namespace);
             console.log(depList.body.items.filter(dep => dep.spec.selector.matchLabels.app == svcdata.body.spec.selector.app));
             const deps = depList.body.items.filter(dep => dep.spec.selector.matchLabels.app == svcdata.body.spec.selector.app);
             for (let i = 0; i < deps.length; i++) {
-                const response = yield k8sAppsV1Api.deleteNamespacedDeployment(deps[i].metadata.name, deps[i].metadata.namespace);
-                console.log(response);
+                const delDep = yield k8sAppsV1Api.deleteNamespacedDeployment(deps[i].metadata.name, deps[i].metadata.namespace);
+                console.log(delDep);
             }
         });
-        test(svcname, 'default');
-        /*
-        const opts = {} as request.Options
-        kc.applyToRequest(opts)
-        request.delete(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services/${svcname}`, opts,
-            (error, response, body) => {
-                if (error) {
-                    console.log(`error: ${error}`);
-                }
-                if (response) {
-                    console.log(`statusCode: ${response.statusCode}`);
-                    console.log(body)
-                }
-      
-          });
-          */
+        doit(svcname, 'default');
     });
 });
 //console.log('Hello TypeScript');
