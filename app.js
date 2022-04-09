@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -19,6 +28,7 @@ const k8s = require("@kubernetes/client-node");
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+const k8sAppsV1Api = kc.makeApiClient(k8s.AppsV1Api);
 const request = require("request");
 const multer = require("multer");
 const upload = multer({ dest: 'uploads/' });
@@ -81,11 +91,17 @@ app.post('/api/service/test', function (req, res) {
 // curl -X POST -H "Content-Type: application/json" -d '{"name":"太郎", "age":"30"}' http://34.146.130.74:3010/api/service/test/service/test
 // curl -X POST -F file=@liveness-check.yml http://34.146.130.74:3010/api/svc/serviceDeploymentRunning
 app.post('/api/svc/serviceDeploymentRunning', upload.single('file'), function (req, res) {
-    //console.log(req)
+    console.log('serviceDeploymentRunning');
+    console.log('label is needed for service discovery');
     console.log(req.file.filename);
     (0, apply_1.apply)(`uploads/${req.file.filename}`);
     //res.send('Got a POST request')
     // res.jsonメソッドは、ヘッダーにContent-Typeにapplication/jsonを追加、オブジェクトをJSON.stringify()して返してくれます。
+    res.json({ 'msg': `saved file @ uploads/${req.file.filename}` });
+});
+app.post('/api/svc/serviceRegister', function (req, res) {
+    console.log(req.file.filename);
+    (0, apply_1.apply)(`uploads/${req.file.filename}`);
     res.json({ 'msg': `saved file @ uploads/${req.file.filename}` });
 });
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-write-operations-deployment-v1-apps-strong-
@@ -201,27 +217,6 @@ app.get('/api/svc/healthCheck/:svcname', function (req, res) {
         }
     });
 });
-// https://kubernetes.io/ja/docs/concepts/scheduling-eviction/assign-pod-node/
-// Node上へのPodのスケジューリング
-/**
- * @swagger
- * /api/svc/serviceSchedule/{svcname}/{nodelabel}:
- *   get:
- *     tags:
- *      - "Service Resource Management API"
- *     summary: get service's endpoints ip and port
- *     description: get service's endpoints ip and port
- *     parameters:
- *       - $ref: '#/parameters/svcname'
- *       - $ref: '#/parameters/nodelabel'
- *     responses:
- *       200:
- *         description: Success, svsname's endpoints ip and port is returned
- */
-app.get('/api/svc/serviceSchedule/:svcname/:nodelabel', function (req, res) {
-    const svcname = req.params.svcname;
-    console.log('serviceSchedule');
-});
 /**
  * @swagger
  * /api/svc/serviceCancel/{svcname}:
@@ -238,7 +233,7 @@ app.get('/api/svc/serviceSchedule/:svcname/:nodelabel', function (req, res) {
  */
 app.get('/api/svc/serviceCanceltest/:svcname', function (req, res) {
     const svcname = req.params.svcname;
-    console.log('service cancel');
+    console.log('delete endpoint but redeployed by kbernetes automatically');
     //console.log(jp.query(cities, '$.items'))
     const opts = {};
     kc.applyToRequest(opts);
@@ -279,11 +274,19 @@ app.get('/api/svc/serviceCanceltest/:svcname', function (req, res) {
         }
     });
 });
-// https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#-strong-write-operations-service-v1-core-strong-
-// /api/v1/namespaces/{namespace}/services/{name}
-app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
+// Kubernetes scheduling is simply the process of assigning pods to the matched nodes in a cluster.
+// https://thenewstack.io/a-deep-dive-into-kubernetes-scheduling/
+// If you want to run your pods on a specific set of nodes, use nodeSelector to ensure that happens. You can define the nodeSelector field as a set of key-value pairs in ‘PodSpec’:
+// Node Affinity
+// 実際的なユースケース
+// Pod間アフィニティとアンチアフィニティは、ReplicaSet、StatefulSet、Deploymentなどのより高レベルなコレクションと併せて使用するとさらに有用です。
+// https://kubernetes.io/ja/docs/concepts/scheduling-eviction/assign-pod-node/
+app.get('/api/svc/serviceScheduleOnNodes/:svcname', function (req, res) {
     const svcname = req.params.svcname;
-    console.log('service cancel');
+    console.log('service schedule');
+    // read service statrus
+    // read deployment with selectror
+    // delete service and deplohment with selector
     //console.log(jp.query(cities, '$.items'))
     const opts = {};
     kc.applyToRequest(opts);
@@ -297,17 +300,51 @@ app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
         }
     });
 });
+// https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#-strong-write-operations-service-v1-core-strong-
+app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const svcname = req.params.svcname;
+        console.log('service cancel');
+        console.log('read service info to determine selector to delete with deploymeht');
+        const test = (svcname, namespace) => __awaiter(this, void 0, void 0, function* () {
+            const svcdata = yield k8sApi.readNamespacedService(svcname, namespace);
+            console.log(svcdata.body.spec.selector.app);
+            const depList = yield k8sAppsV1Api.listNamespacedDeployment(namespace);
+            console.log(depList.body.items.filter(dep => dep.spec.selector.matchLabels.app == svcdata.body.spec.selector.app));
+            const deps = depList.body.items.filter(dep => dep.spec.selector.matchLabels.app == svcdata.body.spec.selector.app);
+            for (let i = 0; i < deps.length; i++) {
+                const response = yield k8sAppsV1Api.deleteNamespacedDeployment(deps[i].metadata.name, deps[i].metadata.namespace);
+                console.log(response);
+            }
+        });
+        test(svcname, 'default');
+        /*
+        const opts = {} as request.Options
+        kc.applyToRequest(opts)
+        request.delete(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services/${svcname}`, opts,
+            (error, response, body) => {
+                if (error) {
+                    console.log(`error: ${error}`);
+                }
+                if (response) {
+                    console.log(`statusCode: ${response.statusCode}`);
+                    console.log(body)
+                }
+      
+          });
+          */
+    });
+});
 //console.log('Hello TypeScript');
 let message = 'Hello World';
 console.log(message);
 const person_1 = require("./person");
-const serviceResourceApi_1 = require("./serviceResourceApi");
 let taro = new person_1.Person('Taro', 30, 'Japan');
 console.log(taro.name); // Taro
 //console.log(taro.age)  // ageはprivateなのでコンパイルエラー
 console.log(taro.profile()); // privateのageを含むメソッドなのでエラーになる
-let myapi = new serviceResourceApi_1.ServiceResourceApi('34.146.130.74');
-myapi.serviceDiscoveryTest();
+//let myapi = new ServiceResourceApi('34.146.130.74')
+//myapi.serviceDiscoveryTest()
 //myapi.healthCheck()
 // https://kubernetes.io/docs/reference/kubectl/jsonpath/
 // json path 
@@ -320,3 +357,38 @@ myapi.serviceDiscoveryTest();
 // $.subsets[*].addresses[*].ip
 // delete deployjents
 // http://blog.madhukaraphatak.com/understanding-k8s-api-part-3/
+// セレクターなしのService
+// https://kubernetes.io/ja/docs/concepts/services-networking/service/
+// https://qiita.com/kouares/items/94a073baed9dffe86ea0
+// 上記のようにmetadataのnameを揃えてService, Endpointsを定義することでセレクタなしServiceに来た通信は、対応するEndpointsの定義にしたがって、10.3.42.250:30050にルーティングされます。
+/*
+metadata:
+  name: my-service
+PodセレクターなしでServiceを定義
+or
+spec:
+  selector:
+    app: MyApp
+これはapp=Myappラベルのついた各Pod上でTCPの9376番ポートをターゲットとします。
+
+
+deployment側のlabelとsrevice側のselectorを合わせる
+metadata:
+  name: express-app
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: express
+
+service
+metadata:
+  name: express-app-svc
+spec:
+  selector:
+    app: express
+*/
+// cluster ip 指定
+// https://cstoku.dev/posts/2018/k8sdojo-09/
+// .spec.clusterIP

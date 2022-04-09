@@ -16,6 +16,7 @@ import k8s = require('@kubernetes/client-node');
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
 const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+const k8sAppsV1Api = kc.makeApiClient(k8s.AppsV1Api);
 
 import request = require('request');
 import fetch from 'node-fetch';
@@ -326,28 +327,28 @@ app.get('/api/svc/serviceScheduleOnNodes/:svcname', function (req, res) {
 })
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#-strong-write-operations-service-v1-core-strong-
-app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
+app.get('/api/svc/serviceCancel/:svcname', async function (req, res) {
   const svcname = req.params.svcname
   console.log('service cancel')
-  console.log('read service info to determine selector to delete with deploymeht')
-  // read service statrus
-  // read deployment with selectror
-  // delete service and deplohment with selector
-  //console.log(jp.query(cities, '$.items'))
-  const opts = {} as request.Options
-  kc.applyToRequest(opts)
-  request.delete(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/services/${svcname}`, opts,
-      (error, response, body) => {
-          if (error) {
-              console.log(`error: ${error}`);
-          }
-          if (response) {
-              console.log(`statusCode: ${response.statusCode}`);
-              console.log(body)   
-          }
+  console.log('read service info and delete selectored service and corresponding deployments')
 
-    });
+  const test = async(svcname, namespace)=>{
+    const svcdata = await k8sApi.readNamespacedService(svcname, namespace)
+    console.log(svcdata.body.spec.selector.app)
+    const delSvc = await k8sApi.deleteNamespacedService(svcname, namespace)
+    console.log(delSvc)
+    const depList = await k8sAppsV1Api.listNamespacedDeployment(namespace)
+    console.log(depList.body.items.filter(dep=>dep.spec.selector.matchLabels.app==svcdata.body.spec.selector.app))
+    const deps = depList.body.items.filter(dep=>dep.spec.selector.matchLabels.app==svcdata.body.spec.selector.app)
+    for(let i=0;i<deps.length;i++){
+      const delDep = await k8sAppsV1Api.deleteNamespacedDeployment(deps[i].metadata.name, deps[i].metadata.namespace)
+      console.log(delDep)
+    }
+  }
+  test(svcname, 'default')
 })
+
+
 
 //console.log('Hello TypeScript');
 let message: string = 'Hello World';
@@ -362,8 +363,8 @@ let taro = new Person('Taro', 30, 'Japan')
 console.log(taro.name)  // Taro
 //console.log(taro.age)  // ageはprivateなのでコンパイルエラー
 console.log(taro.profile())  // privateのageを含むメソッドなのでエラーになる
-let myapi = new ServiceResourceApi('34.146.130.74')
-myapi.serviceDiscoveryTest()
+//let myapi = new ServiceResourceApi('34.146.130.74')
+//myapi.serviceDiscoveryTest()
 
 
 
