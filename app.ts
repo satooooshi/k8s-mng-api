@@ -10,12 +10,26 @@ app.use(cors());
 // https://stackoverflow.com/questions/24543847/req-body-empty-on-posts
 //app.use(express.urlencoded({ extended: true })) //POST (application/x-www-form-urlencoded)
 app.use(express.json()) // Content-Type: application/json
+// 可変階層のパスをハンドリング
+// http://dotnsf.blog.jp/archives/1078520620.html
+app.use( function( req, res, next ){
+  if( req.url.startsWith( '/api/svc/serviceInvoke/' ) ){
+    let params = req.url.substr(23)
+    //console.log(params)
+    // http://34.146.130.74:3010/api/svc/serviceInvoke/reactfront/hello
+    res.redirect( `/api/svc/serviceInvoke?params=${params}`)
+  }else{
+    // '/api/svc/serviceInvoke' で始まらないパスへのアクセスだった場合はそのまま処理する
+    next();
+  }
+});
+
 app.listen(port, host, () => console.log('API is running on '+host+':'+port))
 
 import k8s = require('@kubernetes/client-node');
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
-const k8sApi = kc.makeApiClient(k8s.CoreV1Api);
+const k8sCoreApi = kc.makeApiClient(k8s.CoreV1Api);
 const k8sAppsV1Api = kc.makeApiClient(k8s.AppsV1Api);
 
 import request = require('request');
@@ -50,7 +64,7 @@ app.use('/spec', swaggerUi.serve, swaggerUi.setup(swaggerJSDoc(options)))
 
 app.get('/api/svc/listAllpods', function (req, res) {
   console.log('list all pods')
-  k8sApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, 'app=histories').then((response) => {
+  k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, 'app=histories').then((response) => {
     // tslint:disable-next-line:no-console
     console.log(response.body.items);
     res.json({'msg':'Got a POST request'});
@@ -110,9 +124,9 @@ app.post('/api/svc/serviceRegister', function (req, res) {
  *       200:
  *         description: Success, svsname's endpoints ip and port is returned
  */
-app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
+app.get('/k8sapi/api/svc/serviceDiscovery/:svcname', function (req, res) {
     const svcname = req.params.svcname
-    console.log('serviceDiscovery')
+    console.log('serviceDiscovery purek8sapi')
     //console.log(jp.query(cities, '$.items'))
     const opts = {} as request.Options
     kc.applyToRequest(opts)
@@ -131,8 +145,8 @@ app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
                 })
                 let ports=item.subsets?.[0].ports
                 console.log(addresses)
-                //k8sApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
-                k8sApi.listNamespacedPod('default').then((response) => {
+                //k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
+                k8sCoreApi.listNamespacedPod('default').then((response) => {
                   // tslint:disable-next-line:no-console
                   console.log(response.body.items.filter(pod=>{
                     for(let i=0;i<addresses.length;i++){
@@ -163,6 +177,39 @@ app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
             }
 
       });
+})
+
+// https://stackoverflow.com/questions/49938266/how-to-return-values-from-async-functions-using-async-await-from-function
+/**
+ * @swagger
+ * /api/svc/serviceDiscovery/{svcname}:
+ *   get:
+ *     tags:
+ *      - "Service Resource Management API"
+ *     summary: get service's endpoints ip and port
+ *     description: get service's endpoints ip and port
+ *     parameters:
+ *       - $ref: '#/parameters/svcname'
+ *     responses:
+ *       200:
+ *         description: Success, svsname's endpoints ip and port is returned
+ */
+ app.get('/api/svc/serviceDiscovery/:svcname', async function (req, res) {
+  const svcname = req.params.svcname
+  console.log('serviceDiscovery')
+  /*
+  async function getData() {
+    return await k8sCoreApi.readNamespacedEndpoints(svcname,'default')
+    //return await axios.get('https://jsonplaceholder.typicode.com/posts');
+  }
+  
+  (async () => {
+    const data = await getData()
+    console.log(data.body.subsets)
+  })()
+  */
+  const resu= await serviceDiscovery(svcname)
+  console.log(resu.body.subsets)
 })
 
 /**
@@ -200,8 +247,8 @@ app.get('/api/svc/healthCheck/:svcname', function (req, res) {
               })
               let ports=item.subsets?.[0].ports
               console.log(addresses)
-              //k8sApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
-              k8sApi.listNamespacedPod('default').then((response) => {
+              //k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
+              k8sCoreApi.listNamespacedPod('default').then((response) => {
                 // tslint:disable-next-line:no-console
                 console.log(response.body.items.filter(pod=>{
                   for(let i=0;i<addresses.length;i++){
@@ -244,10 +291,55 @@ app.get('/api/svc/healthCheck/:svcname', function (req, res) {
 // 実際的なユースケース
 // Pod間アフィニティとアンチアフィニティは、ReplicaSet、StatefulSet、Deploymentなどのより高レベルなコレクションと併せて使用するとさらに有用です。
 // https://kubernetes.io/ja/docs/concepts/scheduling-eviction/assign-pod-node/
-app.get('/api/svc/serviceScheduleOnNodes/:svcname', function (req, res) {
+app.get('/api/svc/serviceScheduleOnNodes/:svcname/', function (req, res) {
   const svcname = req.params.svcname
   console.log('service schedule')
 })
+
+app.get('/api/svc/serviceInvoke', async function (req, res) {
+  const params = req.query.params.split( '/' )
+  console.log(params)
+  const svcname = params[0]
+  const path = params.slice(1).join('/')
+  console.log(path)
+  console.log('service Invoke')
+
+  // http://34.146.130.74:3010/api/svc/serviceInvoke/customers/hello/world/test
+  const resu= await serviceInvoke(svcname, path)
+  console.log(resu)
+
+})
+
+async function serviceDiscovery(svcname:string) {
+  /*
+  async function getData() {
+    return await k8sCoreApi.readNamespacedEndpoints(svcname,'default')
+    //return await axios.get('https://jsonplaceholder.typicode.com/posts');
+  }
+  
+  (async () => {
+    const data = await getData()
+    console.log(data.body.subsets)
+  })()
+  */
+
+  const res = await k8sCoreApi.readNamespacedEndpoints(svcname,'default')
+  console.log(res.body)
+  return res
+}
+
+  // https://stackoverflow.com/questions/49938266/how-to-return-values-from-async-functions-using-async-await-from-function
+  // https://www.i-ryo.com/entry/2020/06/05/192657?amp=1
+async function serviceInvoke(svcname:string, path:string) {
+    console.log(`http://34.146.130.74:port/${path}`)
+    const res = await fetch(`http://34.146.130.74:30586/api/customers/hello`);
+    const json = await res.json()
+    return json
+}
+
+
+
+
 
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#-strong-write-operations-service-v1-core-strong-
 app.get('/api/svc/serviceCancel/:svcname', async function (req, res) {
@@ -256,9 +348,9 @@ app.get('/api/svc/serviceCancel/:svcname', async function (req, res) {
   console.log('read service info and delete selectored service and corresponding deployments')
 
   const doit = async(svcname, namespace)=>{
-    const svcdata = await k8sApi.readNamespacedService(svcname, namespace)
+    const svcdata = await k8sCoreApi.readNamespacedService(svcname, namespace)
     console.log(svcdata.body.spec.selector.app)
-    const delSvc = await k8sApi.deleteNamespacedService(svcname, namespace)
+    const delSvc = await k8sCoreApi.deleteNamespacedService(svcname, namespace)
     console.log(delSvc)
     const depList = await k8sAppsV1Api.listNamespacedDeployment(namespace)
     console.log(depList.body.items.filter(dep=>dep.spec.selector.matchLabels.app==svcdata.body.spec.selector.app))
