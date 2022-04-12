@@ -120,7 +120,7 @@ app.post('/api/svc/serviceRegister', function (req, res) {
  *       200:
  *         description: Success, svsname's endpoints ip and port is returned
  */
-app.get('/k8sapi/api/svc/serviceDiscovery/:svcname', function (req, res) {
+app.get('/api/svc/healthCheck/:svcname', function (req, res) {
     const svcname = req.params.svcname;
     console.log('serviceDiscovery purek8sapi');
     //console.log(jp.query(cities, '$.items'))
@@ -191,85 +191,9 @@ app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const svcname = req.params.svcname;
         console.log('serviceDiscovery');
-        /*
-        async function getData() {
-          return await k8sCoreApi.readNamespacedEndpoints(svcname,'default')
-          //return await axios.get('https://jsonplaceholder.typicode.com/posts');
-        }
-        
-        (async () => {
-          const data = await getData()
-          console.log(data.body.subsets)
-        })()
-        */
         const resu = yield serviceDiscovery(svcname);
-        console.log(resu.body.subsets);
-    });
-});
-/**
- * @swagger
- * /api/svc/healthCheck/{svcname}:
- *   get:
- *     tags:
- *      - "Service Resource Management API"
- *     summary: get service's endpoints ip and port
- *     description: get service's endpoints ip and port
- *     parameters:
- *       - $ref: '#/parameters/svcname'
- *     responses:
- *       200:
- *         description: Success, svsname's endpoints ip and port is returned
- */
-app.get('/api/svc/healthCheck/:svcname', function (req, res) {
-    const svcname = req.params.svcname;
-    console.log('healthCheck');
-    //console.log(jp.query(cities, '$.items'))
-    const opts = {};
-    kc.applyToRequest(opts);
-    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/endpoints/${svcname}`, opts, (error, response, body) => {
-        var _a, _b;
-        if (error) {
-            console.log(`error: ${error}`);
-        }
-        if (response) {
-            console.log(`statusCode: ${response.statusCode}`);
-            //console.log(jp.query(JSON.parse(body), '$..clusterIP'))
-            let item = JSON.parse(body);
-            console.log(item);
-            let addresses = (_a = item.subsets) === null || _a === void 0 ? void 0 : _a[0].addresses.map(addr => {
-                return addr.ip; //{ip:addr.ip, uid:addr.targetRef.uid}
-            });
-            let ports = (_b = item.subsets) === null || _b === void 0 ? void 0 : _b[0].ports;
-            console.log(addresses);
-            //k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
-            k8sCoreApi.listNamespacedPod('default').then((response) => {
-                // tslint:disable-next-line:no-console
-                console.log(response.body.items.filter(pod => {
-                    for (let i = 0; i < addresses.length; i++) {
-                        if (addresses[i] == pod.status.podIP) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }).map(pod => {
-                    return { name: pod.metadata.name, podIP: pod.status.podIP, status: pod.status.phase };
-                }));
-                console.log(JSON.stringify(ports, null, 2));
-                return res.send({
-                    endpoints: response.body.items.filter(pod => {
-                        for (let i = 0; i < addresses.length; i++) {
-                            if (addresses[i] == pod.status.podIP) {
-                                return true;
-                            }
-                        }
-                        return false;
-                    }).map(pod => {
-                        return { name: pod.metadata.name, podIP: pod.status.podIP, status: pod.status.phase };
-                    }),
-                    port: ports,
-                });
-            });
-        }
+        console.log(resu);
+        res.send(resu);
     });
 });
 // Kubernetes scheduling is simply the process of assigning pods to the matched nodes in a cluster.
@@ -288,38 +212,36 @@ app.get('/api/svc/serviceInvoke', function (req, res) {
         const params = req.query.params.split('/');
         console.log(params);
         const svcname = params[0];
-        const path = params.slice(1).join('/');
+        const path = '/' + params.slice(1).join('/');
         console.log(path);
         console.log('service Invoke');
-        // http://34.146.130.74:3010/api/svc/serviceInvoke/customers/hello/world/test
+        // http://34.146.130.74:3010/api/svc/serviceInvoke/customers/api/customers/hello
         const resu = yield serviceInvoke(svcname, path);
         console.log(resu);
+        res.send(resu);
     });
 });
 function serviceDiscovery(svcname) {
     return __awaiter(this, void 0, void 0, function* () {
-        /*
-        async function getData() {
-          return await k8sCoreApi.readNamespacedEndpoints(svcname,'default')
-          //return await axios.get('https://jsonplaceholder.typicode.com/posts');
-        }
-        
-        (async () => {
-          const data = await getData()
-          console.log(data.body.subsets)
-        })()
-        */
         const res = yield k8sCoreApi.readNamespacedEndpoints(svcname, 'default');
         console.log(res.body);
-        return res;
+        const subsets = res.body.subsets;
+        let addresses = subsets === null || subsets === void 0 ? void 0 : subsets[0].addresses.map(addr => {
+            return addr.ip; //{ip:addr.ip, uid:addr.targetRef.uid}
+        });
+        let port = subsets === null || subsets === void 0 ? void 0 : subsets[0].ports[0].port;
+        console.log(addresses);
+        console.log(port);
+        return { ips: addresses, port: port };
     });
 }
 // https://stackoverflow.com/questions/49938266/how-to-return-values-from-async-functions-using-async-await-from-function
 // https://www.i-ryo.com/entry/2020/06/05/192657?amp=1
 function serviceInvoke(svcname, path) {
     return __awaiter(this, void 0, void 0, function* () {
-        console.log(`http://34.146.130.74:port/${path}`);
-        const res = yield (0, node_fetch_1.default)(`http://34.146.130.74:30586/api/customers/hello`);
+        const connectTo = yield serviceDiscovery(svcname);
+        console.log(`http://${connectTo.ips[0]}:${connectTo.port}${path}`);
+        const res = yield (0, node_fetch_1.default)(`http://${connectTo.ips[0]}:${connectTo.port}${path}`);
         const json = yield res.json();
         return json;
     });
