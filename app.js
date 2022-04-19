@@ -66,15 +66,46 @@ const options = {
 };
 app.use('/spec', swaggerUi.serve, swaggerUi.setup(swaggerJSDoc(options)));
 app.get('/api/svc/listAllpods', function (req, res) {
-    console.log('list all pods');
-    k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, 'app=histories').then((response) => {
-        // tslint:disable-next-line:no-console
-        console.log(response.body.items);
-        res.json({ 'msg': 'Got a POST request' });
+    return __awaiter(this, void 0, void 0, function* () {
+        console.log('list all pods');
+        const resu = yield k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, 'app=histories');
+        console.log(resu.body.items);
+        /*
+        .then((response) => {
+          // tslint:disable-next-line:no-console
+          console.log(response.body.items);
+          res.json({'msg':'Got a POST request'});
+        });
+        */
+        res.send(resu.body.items);
+    });
+});
+app.get('/api/svc/listAllServices', function (req, res) {
+    return __awaiter(this, void 0, void 0, function* () {
+        console.log('list all services');
+        const resu = yield k8sCoreApi.listNamespacedService('default');
+        console.log(resu.body.items);
+        let svcs = resu.body.items.map(svc => {
+            return {
+                name: svc.metadata.name,
+                clusterIP: svc.spec.clusterIP,
+                'port(s)': svc.spec.ports.map(port => (`${port.port}/${port.protocol}`))
+            };
+        });
+        console.log(svcs);
+        /*
+        .then((response) => {
+          // tslint:disable-next-line:no-console
+          console.log(response.body.items);
+          res.json({'msg':'Got a POST request'});
+        });
+        */
+        res.send(svcs);
     });
 });
 // curl -X POST -H "Content-Type: application/json" -d '{"name":"太郎", "age":"30"}' http://34.146.130.74:3010/api/service/test/service/test
 // curl -X POST -F file=@liveness-check.yml http://34.146.130.74:3010/api/svc/serviceDeploymentRunning
+// selector is needed!!
 app.post('/api/svc/serviceDeploymentRunning', upload.single('file'), function (req, res) {
     console.log('serviceDeploymentRunning');
     console.log('label:app: is needed for service discovery');
@@ -84,10 +115,14 @@ app.post('/api/svc/serviceDeploymentRunning', upload.single('file'), function (r
     // res.jsonメソッドは、ヘッダーにContent-Typeにapplication/jsonを追加、オブジェクトをJSON.stringify()して返してくれます。
     res.json({ 'msg': `saved file @ uploads/${req.file.filename}` });
 });
+// selector is needed!!
 app.post('/api/svc/serviceRegister', function (req, res) {
-    console.log(req.file.filename);
-    (0, apply_1.apply)(`uploads/${req.file.filename}`);
-    res.json({ 'msg': `saved file @ uploads/${req.file.filename}` });
+    return __awaiter(this, void 0, void 0, function* () {
+        console.log(req.file.filename);
+        const resu = yield (0, apply_1.apply)(`uploads/${req.file.filename}`);
+        console.log(resu);
+        res.json({ 'msg': `saved file @ uploads/${req.file.filename}` });
+    });
 });
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-write-operations-deployment-v1-apps-strong-
 /**
@@ -265,11 +300,13 @@ app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
                 console.log(delDep);
             }
         });
-        doit(svcname, 'default');
+        (() => __awaiter(this, void 0, void 0, function* () {
+            console.log(yield doit(svcname, 'default'));
+        }))();
     });
 });
 //console.log('Hello TypeScript');
-let message = 'Hello World';
+let message = 'Service Resource Management API';
 console.log(message);
 const person_1 = require("./person");
 let taro = new person_1.Person('Taro', 30, 'Japan');

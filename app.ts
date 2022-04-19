@@ -62,18 +62,47 @@ const options = {
 app.use('/spec', swaggerUi.serve, swaggerUi.setup(swaggerJSDoc(options)))
 
 
-app.get('/api/svc/listAllpods', function (req, res) {
+app.get('/api/svc/listAllpods', async function (req, res) {
   console.log('list all pods')
-  k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, 'app=histories').then((response) => {
+  const resu = await k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, 'app=histories')
+  console.log(resu.body.items)
+  /*
+  .then((response) => {
     // tslint:disable-next-line:no-console
     console.log(response.body.items);
     res.json({'msg':'Got a POST request'});
   });
+  */
+ res.send(resu.body.items)
 })
+
+app.get('/api/svc/listAllServices', async function (req, res) {
+  console.log('list all services')
+  const resu = await k8sCoreApi.listNamespacedService('default')
+  console.log(resu.body.items)
+  let svcs=resu.body.items.map(svc=>{
+    return { 
+            name: svc.metadata.name, 
+            clusterIP: svc.spec.clusterIP, 
+            'port(s)': svc.spec.ports.map(port=>(`${port.port}/${port.protocol}`)) 
+          }
+  })
+  console.log(svcs)
+  /*
+  .then((response) => {
+    // tslint:disable-next-line:no-console
+    console.log(response.body.items);
+    res.json({'msg':'Got a POST request'});
+  });
+  */
+ res.send(svcs)
+})
+
 
 
 // curl -X POST -H "Content-Type: application/json" -d '{"name":"太郎", "age":"30"}' http://34.146.130.74:3010/api/service/test/service/test
 // curl -X POST -F file=@liveness-check.yml http://34.146.130.74:3010/api/svc/serviceDeploymentRunning
+// selector is needed!!
 app.post('/api/svc/serviceDeploymentRunning', upload.single('file'), function (req, res) {
   console.log('serviceDeploymentRunning')
   console.log('label:app: is needed for service discovery')
@@ -84,9 +113,12 @@ app.post('/api/svc/serviceDeploymentRunning', upload.single('file'), function (r
   res.json({'msg':`saved file @ uploads/${req.file.filename}`})
 })
 
-app.post('/api/svc/serviceRegister', function (req, res) {
+
+// selector is needed!!
+app.post('/api/svc/serviceRegister', async function (req, res) {
   console.log(req.file.filename)
-  apply(`uploads/${req.file.filename}`)
+  const resu = await apply(`uploads/${req.file.filename}`)
+  console.log(resu)
   res.json({'msg':`saved file @ uploads/${req.file.filename}`})
 })
 
@@ -276,13 +308,15 @@ app.get('/api/svc/serviceCancel/:svcname', async function (req, res) {
       console.log(delDep)
     }
   }
-  doit(svcname, 'default')
+  (async () => {
+    console.log(await doit(svcname, 'default'))
+  })()
 })
 
 
 
 //console.log('Hello TypeScript');
-let message: string = 'Hello World';
+let message: string = 'Service Resource Management API';
 console.log(message);
 
 import { Person } from './person'
