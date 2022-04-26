@@ -4,14 +4,17 @@ npm start
 compile ts files 
 npx tsc --init
 --> tscofig.json is generated
+
+how to run
 npx tsc && node app.js
 
-compile a single ts file
+when compilling a single ts file
 npx tsc app.ts  
 --> app.js is generated  
 
 typescript compile
   // "strict": true,  
+
 
 知識ゼロから始めるTypeScript 〜クラス編〜
 https://qiita.com/yukiji/items/3db06601ece7f080b0d0

@@ -309,7 +309,7 @@ app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
 let message = 'Service Resource Management API';
 console.log(message);
 const person_1 = require("./person");
-let taro = new person_1.Person('Taro', 30, 'Japan');
+let taro = new person_1.Person('Taro', 24, 'Japan');
 console.log(taro.name); // Taro
 //console.log(taro.age)  // ageはprivateなのでコンパイルエラー
 console.log(taro.profile()); // privateのageを含むメソッドなのでエラーになる

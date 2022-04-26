@@ -323,7 +323,7 @@ import { Person } from './person'
 import { ServiceResourceApi } from './serviceResourceApi'
 import { createTrue } from "typescript"
 
-let taro = new Person('Taro', 30, 'Japan')
+let taro = new Person('Taro', 24, 'Japan')
 
 console.log(taro.name)  // Taro
 //console.log(taro.age)  // ageはprivateなのでコンパイルエラー
