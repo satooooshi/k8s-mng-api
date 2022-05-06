@@ -27,9 +27,10 @@ app.use(express_1.default.json()); // Content-Type: application/json
 // http://dotnsf.blog.jp/archives/1078520620.html
 app.use(function (req, res, next) {
     if (req.url.startsWith('/api/svc/serviceInvoke/')) {
-        let params = req.url.substr(23);
+        const prfx = '/api/svc/serviceInvoke/';
+        let params = req.url.substr(prfx.length);
         //console.log(params)
-        // http://34.146.130.74:3010/api/svc/serviceInvoke/reactfront/hello
+        // http://34.146.130.74:3010/api/svc/serviceInvoke/istio-taest/customers/api/customers/hello
         res.redirect(`/api/svc/serviceInvoke?params=${params}`);
     }
     else {
@@ -37,14 +38,13 @@ app.use(function (req, res, next) {
         next();
     }
 });
-app.listen(port, host, () => console.log('API is running on ' + host + ':' + port));
+app.listen(port, host, () => console.log('Service Resource API is running on ' + host + ':' + port));
 const k8s = require("@kubernetes/client-node");
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
 const k8sCoreApi = kc.makeApiClient(k8s.CoreV1Api);
 const k8sAppsV1Api = kc.makeApiClient(k8s.AppsV1Api);
 const request = require("request");
-const node_fetch_1 = __importDefault(require("node-fetch"));
 const multer = require("multer");
 const upload = multer({ dest: 'uploads/' });
 const apply_1 = require("./apply");
@@ -65,8 +65,9 @@ const options = {
     apis: ['./app.js'],
 };
 app.use('/spec', swaggerUi.serve, swaggerUi.setup(swaggerJSDoc(options)));
-app.get('/api/svc/listAllpods', function (req, res) {
+app.get('/api/svc/listAllpods/:ns', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        const ns = req.params.ns;
         console.log('list all pods');
         const resu = yield k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, 'app=histories');
         console.log(resu.body.items);
@@ -80,8 +81,9 @@ app.get('/api/svc/listAllpods', function (req, res) {
         res.send(resu.body.items);
     });
 });
-app.get('/api/svc/listAllServices', function (req, res) {
+app.get('/api/svc/listAllServices/:ns', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        const ns = req.params.ns;
         console.log('list all services');
         const resu = yield k8sCoreApi.listNamespacedService('default');
         console.log(resu.body.items);
@@ -155,7 +157,8 @@ app.post('/api/svc/serviceRegister', function (req, res) {
  *       200:
  *         description: Success, svsname's endpoints ip and port is returned
  */
-app.get('/api/svc/healthCheck/:svcname', function (req, res) {
+app.get('/api/svc/healthCheck/:ns/:svcname', function (req, res) {
+    const ns = req.params.ns;
     const svcname = req.params.svcname;
     console.log('serviceDiscovery purek8sapi');
     //console.log(jp.query(cities, '$.items'))
@@ -177,7 +180,7 @@ app.get('/api/svc/healthCheck/:svcname', function (req, res) {
             let ports = (_b = item.subsets) === null || _b === void 0 ? void 0 : _b[0].ports;
             console.log(addresses);
             //k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
-            k8sCoreApi.listNamespacedPod('default').then((response) => {
+            k8sCoreApi.listNamespacedPod(ns).then((response) => {
                 // tslint:disable-next-line:no-console
                 console.log(response.body.items.filter(pod => {
                     for (let i = 0; i < addresses.length; i++) {
@@ -222,11 +225,12 @@ app.get('/api/svc/healthCheck/:svcname', function (req, res) {
  *       200:
  *         description: Success, svsname's endpoints ip and port is returned
  */
-app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
+app.get('/api/svc/serviceDiscovery/:ns/:svcname', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        const ns = req.params.ns;
         const svcname = req.params.svcname;
         console.log('serviceDiscovery');
-        const resu = yield serviceDiscovery(svcname);
+        const resu = yield serviceDiscovery(svcname, ns);
         console.log(resu);
         res.send(resu);
     });
@@ -238,27 +242,29 @@ app.get('/api/svc/serviceDiscovery/:svcname', function (req, res) {
 // 実際的なユースケース
 // Pod間アフィニティとアンチアフィニティは、ReplicaSet、StatefulSet、Deploymentなどのより高レベルなコレクションと併せて使用するとさらに有用です。
 // https://kubernetes.io/ja/docs/concepts/scheduling-eviction/assign-pod-node/
-app.get('/api/svc/serviceScheduleOnNodes/:svcname/', function (req, res) {
+app.get('/api/svc/serviceScheduleOnNodes/:svcname', function (req, res) {
     const svcname = req.params.svcname;
     console.log('service schedule');
 });
+// get service's invocation urls
 app.get('/api/svc/serviceInvoke', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
         const params = req.query.params.split('/');
         console.log(params);
-        const svcname = params[0];
-        const path = '/' + params.slice(1).join('/');
+        const ns = params[0];
+        const svcname = params[1];
+        const path = '/' + params.slice(2).join('/');
         console.log(path);
         console.log('service Invoke');
         // http://34.146.130.74:3010/api/svc/serviceInvoke/customers/api/customers/hello
-        const resu = yield serviceInvoke(svcname, path);
+        const resu = yield serviceInvoke(svcname, ns, path);
         console.log(resu);
         res.send(resu);
     });
 });
-function serviceDiscovery(svcname) {
+function serviceDiscovery(svcname, ns) {
     return __awaiter(this, void 0, void 0, function* () {
-        const res = yield k8sCoreApi.readNamespacedEndpoints(svcname, 'default');
+        const res = yield k8sCoreApi.readNamespacedEndpoints(svcname, ns);
         console.log(res.body);
         const subsets = res.body.subsets;
         let addresses = subsets === null || subsets === void 0 ? void 0 : subsets[0].addresses.map(addr => {
@@ -272,18 +278,34 @@ function serviceDiscovery(svcname) {
 }
 // https://stackoverflow.com/questions/49938266/how-to-return-values-from-async-functions-using-async-await-from-function
 // https://www.i-ryo.com/entry/2020/06/05/192657?amp=1
-function serviceInvoke(svcname, path) {
+// http://34.146.130.74:3010/api/svc/serviceInvoke/customers/api/customers/hello
+function serviceInvoke(svcname, ns, path) {
     return __awaiter(this, void 0, void 0, function* () {
-        const connectTo = yield serviceDiscovery(svcname);
-        console.log(`http://${connectTo.ips[0]}:${connectTo.port}${path}`);
-        const res = yield (0, node_fetch_1.default)(`http://${connectTo.ips[0]}:${connectTo.port}${path}`);
-        const json = yield res.json();
-        return json;
+        try {
+            const connectTo = yield serviceDiscovery(svcname, ns);
+            const res = {
+                svc_url: {
+                    with_ip: connectTo.ips.map(ip => { return `http://${ip}:${connectTo.port}${path}`; }),
+                    with_svcname: `http://${svcname}.${ns}:${connectTo.port}${path}`,
+                    with_dapr: `http://127.0.0.1:3500/v1.0/invoke/${svcname}.${ns}/method${path}`,
+                    note: 'svc_urls are ONLY accessible from inside the cluster.'
+                }
+            };
+            //console.log(res)
+            return res;
+        }
+        catch (err) {
+            return `Error getting invocation url of service: ${svcname}, namespace: ${ns}.`;
+        }
+        //const res = await fetch(`http://${connectTo.ips[0]}:${connectTo.port}${path}`)
+        //const json = await res.json()
+        //return json
     });
 }
 // https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#-strong-write-operations-service-v1-core-strong-
-app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
+app.get('/api/svc/serviceCancel/:ns/:svcname', function (req, res) {
     return __awaiter(this, void 0, void 0, function* () {
+        const ns = req.params.ns;
         const svcname = req.params.svcname;
         console.log('service cancel');
         console.log('read service info and delete selectored service and corresponding deployments');
@@ -301,7 +323,7 @@ app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
             }
         });
         (() => __awaiter(this, void 0, void 0, function* () {
-            console.log(yield doit(svcname, 'default'));
+            console.log(yield doit(svcname, ns));
         }))();
     });
 });
@@ -309,7 +331,7 @@ app.get('/api/svc/serviceCancel/:svcname', function (req, res) {
 let message = 'Service Resource Management API';
 console.log(message);
 const person_1 = require("./person");
-let taro = new person_1.Person('Taro', 24, 'Japan');
+let taro = new person_1.Person('Service Resource API', 1, 'v1.0.0');
 console.log(taro.name); // Taro
 //console.log(taro.age)  // ageはprivateなのでコンパイルエラー
 console.log(taro.profile()); // privateのageを含むメソッドなのでエラーになる
