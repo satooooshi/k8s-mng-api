@@ -5,6 +5,7 @@ const port = 3010
 
 import cors from "cors"
 app.use(cors());
+
 // Express v4.xでJSONのリクエスト/レスポンスを取得する正しい方法
 // https://blog.hrendoh.com/handle-json-requests-and-responses-in-express/ 
 // https://stackoverflow.com/questions/24543847/req-body-empty-on-posts
@@ -12,6 +13,23 @@ app.use(cors());
 app.use(express.json()) // Content-Type: application/json
 // 可変階層のパスをハンドリング
 // http://dotnsf.blog.jp/archives/1078520620.html
+
+/**
+ * @swagger
+ * /api/svc/serviceInvoke/{ns}/{svcname}/{path}:
+ *   get:
+ *     tags:
+ *      - "Service Resource Management API"
+ *     summary: get service's invocation urls
+ *     description: get service's invocation urls
+ *     parameters:
+ *       - $ref: '#/parameters/ns'
+ *       - $ref: '#/parameters/svcname'
+ *       - $ref: '#/parameters/path'
+ *     responses:
+ *       200:
+ *         description: Success, service's invocation urls are returned
+ */
 app.use( function( req, res, next ){
   if( req.url.startsWith( '/api/svc/serviceInvoke/' ) ){
     const prfx='/api/svc/serviceInvoke/'
@@ -45,7 +63,7 @@ import {apply} from './apply'
 
 
 // https://blog.mamansoft.net/2019/06/18/create-api-specification-with-express/
-// http://34.146.130.74:3010/spec/#/default/get_hello
+// http://34.146.130.74:3010/spec
 // http://honeplus.blog50.fc2.com/blog-entry-164.html
 // how to write
 // https://qiita.com/oden141/items/8591f47d67dca09cc714
@@ -136,28 +154,35 @@ app.post('/api/svc/serviceRegister', async function (req, res) {
  *     description: service name
  *     required: true
  *     type: string
- *   nodelabel:
+ *   ns:
  *     in: path
- *     name: nodelabel
- *     description: add/delete endpoints from this node
- *     requeired: true
+ *     name: namespace
+ *     description: service namespace
+ *     required: true
+ *     type: string
+  *   path:
+ *     in: path
+ *     name: path
+ *     description: path, leading slash must be left out
+ *     required: true
  *     type: string
  */
 
 
 /**
  * @swagger
- * /api/svc/serviceDiscovery/{svcname}:
+ * /api/svc/healthCheck/{ns}/{svcname}:
  *   get:
  *     tags:
  *      - "Service Resource Management API"
  *     summary: get service's endpoints ip and port
  *     description: get service's endpoints ip and port
  *     parameters:
+ *       - $ref: '#/parameters/ns'
  *       - $ref: '#/parameters/svcname'
  *     responses:
  *       200:
- *         description: Success, svsname's endpoints ip and port is returned
+ *         description: Success, svsname's endpoints heath status are returned
  */
 app.get('/api/svc/healthCheck/:ns/:svcname', function (req, res) {
     const ns = req.params.ns
@@ -218,13 +243,14 @@ app.get('/api/svc/healthCheck/:ns/:svcname', function (req, res) {
 // https://stackoverflow.com/questions/49938266/how-to-return-values-from-async-functions-using-async-await-from-function
 /**
  * @swagger
- * /api/svc/serviceDiscovery/{svcname}:
+ * /api/svc/serviceDiscovery/{ns}/{svcname}:
  *   get:
  *     tags:
  *      - "Service Resource Management API"
  *     summary: get service's endpoints ip and port
  *     description: get service's endpoints ip and port
  *     parameters:
+ *       - $ref: '#/parameters/ns'
  *       - $ref: '#/parameters/svcname'
  *     responses:
  *       200:

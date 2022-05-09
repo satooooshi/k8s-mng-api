@@ -61,3 +61,7 @@ https://qiita.com/takkii1010/items/0ce1c834d3a73496ccef
 
 kubectl get service -o json -o=jsonpath="{range .items[*]}{.metadata.name}{'\t'}{.status.startTime}{'\n'}{end}"
 kubectl get pods -o=jsonpath="{range .items[*]}{.metadata.name}{\"\t\"}{.status.startTime}{\"\n\"}{end}"
+
+
+swagger how to write
+http://honeplus.blog50.fc2.com/blog-entry-164.html

@@ -25,12 +25,28 @@ app.use((0, cors_1.default)());
 app.use(express_1.default.json()); // Content-Type: application/json
 // 可変階層のパスをハンドリング
 // http://dotnsf.blog.jp/archives/1078520620.html
+/**
+ * @swagger
+ * /api/svc/serviceInvoke/{ns}/{svcname}/{path}:
+ *   get:
+ *     tags:
+ *      - "Service Resource Management API"
+ *     summary: get service's invocation urls
+ *     description: get service's invocation urls
+ *     parameters:
+ *       - $ref: '#/parameters/ns'
+ *       - $ref: '#/parameters/svcname'
+ *       - $ref: '#/parameters/path'
+ *     responses:
+ *       200:
+ *         description: Success, service's invocation urls are returned
+ */
 app.use(function (req, res, next) {
     if (req.url.startsWith('/api/svc/serviceInvoke/')) {
         const prfx = '/api/svc/serviceInvoke/';
         let params = req.url.substr(prfx.length);
         //console.log(params)
-        // http://34.146.130.74:3010/api/svc/serviceInvoke/istio-taest/customers/api/customers/hello
+        // http://34.146.130.74:3010/api/svc/serviceInvoke/istio-test/customers/api/customers/hello
         res.redirect(`/api/svc/serviceInvoke?params=${params}`);
     }
     else {
@@ -49,7 +65,7 @@ const multer = require("multer");
 const upload = multer({ dest: 'uploads/' });
 const apply_1 = require("./apply");
 // https://blog.mamansoft.net/2019/06/18/create-api-specification-with-express/
-// http://34.146.130.74:3010/spec/#/default/get_hello
+// http://34.146.130.74:3010/spec
 // http://honeplus.blog50.fc2.com/blog-entry-164.html
 // how to write
 // https://qiita.com/oden141/items/8591f47d67dca09cc714
@@ -136,26 +152,33 @@ app.post('/api/svc/serviceRegister', function (req, res) {
  *     description: service name
  *     required: true
  *     type: string
- *   nodelabel:
+ *   ns:
  *     in: path
- *     name: nodelabel
- *     description: add/delete endpoints from this node
- *     requeired: true
+ *     name: namespace
+ *     description: service namespace
+ *     required: true
+ *     type: string
+  *   path:
+ *     in: path
+ *     name: path
+ *     description: path, leading slash must be left out
+ *     required: true
  *     type: string
  */
 /**
  * @swagger
- * /api/svc/serviceDiscovery/{svcname}:
+ * /api/svc/serviceDiscovery/{ns}/{svcname}:
  *   get:
  *     tags:
  *      - "Service Resource Management API"
  *     summary: get service's endpoints ip and port
  *     description: get service's endpoints ip and port
  *     parameters:
+ *       - $ref: '#/parameters/ns'
  *       - $ref: '#/parameters/svcname'
  *     responses:
  *       200:
- *         description: Success, svsname's endpoints ip and port is returned
+ *         description: Success, svsname's endpoints heath status are returned
  */
 app.get('/api/svc/healthCheck/:ns/:svcname', function (req, res) {
     const ns = req.params.ns;
@@ -213,13 +236,14 @@ app.get('/api/svc/healthCheck/:ns/:svcname', function (req, res) {
 // https://stackoverflow.com/questions/49938266/how-to-return-values-from-async-functions-using-async-await-from-function
 /**
  * @swagger
- * /api/svc/serviceDiscovery/{svcname}:
+ * /api/svc/serviceDiscovery/{ns}/{svcname}:
  *   get:
  *     tags:
  *      - "Service Resource Management API"
  *     summary: get service's endpoints ip and port
  *     description: get service's endpoints ip and port
  *     parameters:
+ *       - $ref: '#/parameters/ns'
  *       - $ref: '#/parameters/svcname'
  *     responses:
  *       200:
@@ -332,12 +356,9 @@ let message = 'Service Resource Management API';
 console.log(message);
 const person_1 = require("./person");
 let taro = new person_1.Person('Service Resource API', 1, 'v1.0.0');
-console.log(taro.name); // Taro
+console.log(taro.name);
 //console.log(taro.age)  // ageはprivateなのでコンパイルエラー
 console.log(taro.profile()); // privateのageを含むメソッドなのでエラーになる
-//let myapi = new ServiceResourceApi('34.146.130.74')
-//myapi.serviceDiscoveryTest()
-//myapi.healthCheck()
 // https://kubernetes.io/docs/reference/kubectl/jsonpath/
 // json path 
 // npx tsc && node app.js
