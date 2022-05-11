@@ -25,6 +25,32 @@ app.use((0, cors_1.default)());
 app.use(express_1.default.json()); // Content-Type: application/json
 // 可変階層のパスをハンドリング
 // http://dotnsf.blog.jp/archives/1078520620.html
+// https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-write-operations-deployment-v1-apps-strong-
+/**
+ * @swagger
+ * parameters:
+ *   svcname:
+ *     in: path
+ *     name: svcname
+ *     description: service name
+ *     required: true
+ *     type: string
+ *     example: catalog
+ *   ns:
+ *     in: path
+ *     name: ns
+ *     description: service namespace
+ *     required: true
+ *     type: string
+ *     example: istio-test
+  *   path:
+ *     in: path
+ *     name: path
+ *     description: path, leading slash must be left out
+ *     required: true
+ *     type: string
+ *     example: api/catalog
+ */
 /**
  * @swagger
  * /api/svc/serviceInvoke/{ns}/{svcname}/{path}:
@@ -142,32 +168,9 @@ app.post('/api/svc/serviceRegister', function (req, res) {
         res.json({ 'msg': `saved file @ uploads/${req.file.filename}` });
     });
 });
-// https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-write-operations-deployment-v1-apps-strong-
 /**
  * @swagger
- * parameters:
- *   svcname:
- *     in: path
- *     name: svcname
- *     description: service name
- *     required: true
- *     type: string
- *   ns:
- *     in: path
- *     name: namespace
- *     description: service namespace
- *     required: true
- *     type: string
-  *   path:
- *     in: path
- *     name: path
- *     description: path, leading slash must be left out
- *     required: true
- *     type: string
- */
-/**
- * @swagger
- * /api/svc/serviceDiscovery/{ns}/{svcname}:
+ * /api/svc/healthCheck/{ns}/{svcname}:
  *   get:
  *     tags:
  *      - "Service Resource Management API"
@@ -187,37 +190,26 @@ app.get('/api/svc/healthCheck/:ns/:svcname', function (req, res) {
     //console.log(jp.query(cities, '$.items'))
     const opts = {};
     kc.applyToRequest(opts);
-    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/endpoints/${svcname}`, opts, (error, response, body) => {
-        var _a, _b;
-        if (error) {
-            console.log(`error: ${error}`);
-        }
-        if (response) {
-            console.log(`statusCode: ${response.statusCode}`);
-            //console.log(jp.query(JSON.parse(body), '$..clusterIP'))
-            let item = JSON.parse(body);
-            console.log(item);
-            let addresses = (_a = item.subsets) === null || _a === void 0 ? void 0 : _a[0].addresses.map(addr => {
-                return addr.ip; //{ip:addr.ip, uid:addr.targetRef.uid}
-            });
-            let ports = (_b = item.subsets) === null || _b === void 0 ? void 0 : _b[0].ports;
-            console.log(addresses);
-            //k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
-            k8sCoreApi.listNamespacedPod(ns).then((response) => {
-                // tslint:disable-next-line:no-console
-                console.log(response.body.items.filter(pod => {
-                    for (let i = 0; i < addresses.length; i++) {
-                        if (addresses[i] == pod.status.podIP) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }).map(pod => {
-                    return { name: pod.metadata.name, podIP: pod.status.podIP, status: pod.status.phase };
-                }));
-                console.log(JSON.stringify(ports, null, 2));
-                return res.send({
-                    endpoints: response.body.items.filter(pod => {
+    try {
+        request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/${ns}/endpoints/${svcname}`, opts, (error, response, body) => {
+            var _a, _b;
+            if (error) {
+                console.log(`error: ${error}`);
+            }
+            if (response) {
+                console.log(`statusCode: ${response.statusCode}`);
+                //console.log(jp.query(JSON.parse(body), '$..clusterIP'))
+                let item = JSON.parse(body);
+                console.log(item);
+                let addresses = (_a = item.subsets) === null || _a === void 0 ? void 0 : _a[0].addresses.map(addr => {
+                    return addr.ip; //{ip:addr.ip, uid:addr.targetRef.uid}
+                });
+                let ports = (_b = item.subsets) === null || _b === void 0 ? void 0 : _b[0].ports;
+                console.log(addresses);
+                //k8sCoreApi.listNamespacedPod('default', undefined, undefined, undefined, undefined, `app=${svcname}`).then((response) => {
+                k8sCoreApi.listNamespacedPod(ns).then((response) => {
+                    // tslint:disable-next-line:no-console
+                    console.log(response.body.items.filter(pod => {
                         for (let i = 0; i < addresses.length; i++) {
                             if (addresses[i] == pod.status.podIP) {
                                 return true;
@@ -226,12 +218,28 @@ app.get('/api/svc/healthCheck/:ns/:svcname', function (req, res) {
                         return false;
                     }).map(pod => {
                         return { name: pod.metadata.name, podIP: pod.status.podIP, status: pod.status.phase };
-                    }),
-                    port: ports,
+                    }));
+                    console.log(JSON.stringify(ports, null, 2));
+                    return res.send({
+                        endpoints: response.body.items.filter(pod => {
+                            for (let i = 0; i < addresses.length; i++) {
+                                if (addresses[i] == pod.status.podIP) {
+                                    return true;
+                                }
+                            }
+                            return false;
+                        }).map(pod => {
+                            return { name: pod.metadata.name, podIP: pod.status.podIP, status: pod.status.phase };
+                        }),
+                        port: ports,
+                    });
                 });
-            });
-        }
-    });
+            }
+        });
+    }
+    catch (err) {
+        return `Error getting endpoints health of service: ${svcname}, namespace: ${ns}.`;
+    }
 });
 // https://stackoverflow.com/questions/49938266/how-to-return-values-from-async-functions-using-async-await-from-function
 /**

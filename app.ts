@@ -14,6 +14,34 @@ app.use(express.json()) // Content-Type: application/json
 // 可変階層のパスをハンドリング
 // http://dotnsf.blog.jp/archives/1078520620.html
 
+
+// https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-write-operations-deployment-v1-apps-strong-
+/**
+ * @swagger
+ * parameters:
+ *   svcname:
+ *     in: path
+ *     name: svcname
+ *     description: service name
+ *     required: true
+ *     type: string
+ *     example: catalog
+ *   ns:
+ *     in: path
+ *     name: ns
+ *     description: service namespace
+ *     required: true
+ *     type: string
+ *     example: istio-test
+  *   path:
+ *     in: path
+ *     name: path
+ *     description: path, leading slash must be left out
+ *     required: true
+ *     type: string
+ *     example: api/catalog
+ */
+
 /**
  * @swagger
  * /api/svc/serviceInvoke/{ns}/{svcname}/{path}:
@@ -144,29 +172,7 @@ app.post('/api/svc/serviceRegister', async function (req, res) {
 })
 
 
-// https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.23/#-strong-write-operations-deployment-v1-apps-strong-
-/**
- * @swagger
- * parameters:
- *   svcname:
- *     in: path
- *     name: svcname
- *     description: service name
- *     required: true
- *     type: string
- *   ns:
- *     in: path
- *     name: namespace
- *     description: service namespace
- *     required: true
- *     type: string
-  *   path:
- *     in: path
- *     name: path
- *     description: path, leading slash must be left out
- *     required: true
- *     type: string
- */
+
 
 
 /**
@@ -191,7 +197,7 @@ app.get('/api/svc/healthCheck/:ns/:svcname', function (req, res) {
     //console.log(jp.query(cities, '$.items'))
     const opts = {} as request.Options
     kc.applyToRequest(opts)
-    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/default/endpoints/${svcname}`, opts,
+    request.get(`${kc.getCurrentCluster().server}/api/v1/namespaces/${ns}/endpoints/${svcname}`, opts,
         (error, response, body) => {
             if (error) {
                 console.log(`error: ${error}`);
@@ -373,6 +379,7 @@ console.log(message);
 import { Person } from './person'
 import { ServiceResourceApi } from './serviceResourceApi'
 import { createTrue } from "typescript"
+import { newUsers } from "@kubernetes/client-node/dist/config_types"
 
 let taro = new Person('Service Resource API', 1, 'v1.0.0')
 
